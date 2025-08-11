@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import './index.css'; // Import the CSS file
+import { Mic } from 'lucide-react';
+
 
 const VoiceInterface = () => {
     const [isListening, setIsListening] = useState(false);
@@ -9,7 +11,10 @@ const VoiceInterface = () => {
     const abortControllerRef = useRef(null);
     const isManuallyStoppedRef = useRef(false);
     const skipAutoRestartRef = useRef(false);
-
+    const [darkMode, setDarkMode] = useState(false);  // <-- dark mode state
+    const handleToggleChange = (e) => {
+        setDarkMode(e.target.checked);
+    };
 
     // Cleanup on unmount
     useEffect(() => {
@@ -153,7 +158,7 @@ const VoiceInterface = () => {
         if (window.speechSynthesis.speaking) {
             window.speechSynthesis.cancel();
             setIsSpeaking(false);
-                        setStatus('Click to start');
+            setStatus('Click to start');
 
             console.log('Speech synthesis stopped');
         }
@@ -301,13 +306,18 @@ const VoiceInterface = () => {
     };
 
     return (
-        <div className="voice-interface-container">
+        <div className={`voice-interface-container${darkMode ? ' dark' : ''}`}>
             <div className="revolt-logo">REVOLT</div>
 
             <div className="toggle-container">
-                <span className="toggle-label">Toggle</span>
+                <span className="toggle-label">Dark Mode</span>
                 <label className="toggle-switch">
-                    <input type="checkbox" disabled className="toggle-input" />
+                    <input
+                        type="checkbox"
+                        checked={darkMode}
+                        onChange={handleToggleChange}
+                        className="toggle-input"
+                    />
                     <span className="toggle-slider">
                         <span className="toggle-slider-inner"></span>
                     </span>
@@ -315,14 +325,14 @@ const VoiceInterface = () => {
             </div>
 
             <div className="main-content">
+                {/* The rest remains unchanged */}
                 <div className="bot-emoji">🤖</div>
-
                 <div className="talk-title">Talk to Rev</div>
 
                 <button onClick={handleMicClick} className={getButtonClass()}>
-                    <svg className="mic-icon" viewBox="0 0 24 24">
-                        <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V21a1 1 0 1 0 2 0v-2.08A7 7 0 0 0 17 12z" />
-                    </svg>
+                    <Mic className="mic-icon" />
+
+
                 </button>
 
                 <div className="status-text">{status}</div>

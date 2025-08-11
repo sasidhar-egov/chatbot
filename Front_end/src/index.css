@@ -34,42 +34,9 @@
   color: #666;
 }
 
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 60px;
-  height: 34px;
-}
 
-.toggle-input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
 
-.toggle-slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: .4s;
-  border-radius: 34px;
-}
 
-.toggle-slider-inner {
-  position: absolute;
-  content: '';
-  height: 26px;
-  width: 26px;
-  left: 4px;
-  bottom: 4px;
-  background-color: white;
-  transition: .4s;
-  border-radius: 50%;
-}
 
 .main-content {
   display: flex;
@@ -144,8 +111,9 @@
 .mic-icon {
   width: 36px;
   height: 36px;
-  fill: #fff;
+  stroke: #fff;
 }
+
 
 /* Animations */
 @keyframes pulse {
@@ -197,4 +165,105 @@
       width: 32px;
       height: 32px;
   }
+}
+
+
+
+/* Add this to your VoiceInterface.css */
+
+.voice-interface-container.dark {
+  background-color: #121212;
+  color: #eee;
+}
+
+.voice-interface-container.dark .revolt-logo {
+  color: #90caf9;
+}
+
+.voice-interface-container.dark .toggle-container {
+  background-color: #1e1e1e;
+  box-shadow: 0 2px 10px rgba(255, 255, 255, 0.1);
+}
+
+.voice-interface-container.dark .toggle-label {
+  color: #ccc;
+}
+
+.voice-interface-container.dark .main-content {
+  background-color: #1e1e1e;
+  box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
+}
+
+.voice-interface-container.dark .talk-title {
+  color: #eee;
+}
+
+.voice-interface-container.dark .status-text {
+  color: #bbb;
+}
+
+.voice-interface-container.dark .hint-text {
+  color: #888;
+}
+
+.voice-interface-container.dark .mic-button.idle {
+  background-color: #90caf9;
+}
+
+.voice-interface-container.dark .mic-button.listening {
+  background-color: #66bb6a;
+}
+
+.voice-interface-container.dark .mic-button.speaking {
+  background-color: #fbc02d;
+}
+
+
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 60px;
+  height: 34px;
+}
+
+/* Hide the default checkbox */
+.toggle-input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* The slider track */
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 34px;
+}
+
+/* The circle inside the slider */
+.toggle-slider-inner {
+  position: absolute;
+  height: 26px;
+  width: 26px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+/* When checked, move the circle to the right and change background color */
+.toggle-input:checked + .toggle-slider {
+  background-color: #1976d2; /* Blue for dark mode ON */
+}
+
+.toggle-input:checked + .toggle-slider .toggle-slider-inner {
+  transform: translateX(26px); /* Move circle right */
 }

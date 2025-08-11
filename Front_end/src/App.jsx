@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import VoiceInterface from './VoiceInterface'
 
 function App() {
