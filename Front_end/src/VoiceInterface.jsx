@@ -1,45 +1,137 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import './index.css'; // Import the CSS file
 
 const VoiceInterface = () => {
     const [isListening, setIsListening] = useState(false);
     const [isSpeaking, setIsSpeaking] = useState(false);
+    const [status, setStatus] = useState('Click to start');
     const recognitionRef = useRef(null);
     const abortControllerRef = useRef(null);
+    const isManuallyStoppedRef = useRef(false);
+    const skipAutoRestartRef = useRef(false);
+
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (recognitionRef.current) {
+                recognitionRef.current.stop();
+            }
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, []);
 
     // Start continuous listening using Web Speech API
     const startListening = () => {
+        // Don't start if already listening or manually stopped
+        if (isListening || isManuallyStoppedRef.current) {
+            return;
+        }
+
         if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
             alert('Speech Recognition is not supported in this browser.');
             return;
         }
+
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US'; // You can make this dynamic for multi-language
 
-        recognition.onstart = () => setIsListening(true);
-        recognition.onend = () => {
-            setIsListening(false);
-            // Auto-restart unless we are speaking
-            if (!isSpeaking) startListening();
-        };
-        recognition.onerror = (e) => {
-            console.error('Speech recognition error:', e);
-            setIsListening(false);
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+            setIsListening(true);
             if (!isSpeaking) {
-                // Add a small delay before restarting to prevent rapid restarts
+                setStatus('Listening...');
+            }
+            console.log('Started listening');
+        };
+
+        recognition.onend = () => {
+            console.log('Recognition ended');
+            setIsListening(false);
+
+            if (skipAutoRestartRef.current) {
+                console.log('Skipping auto-restart due to recent bot speech end');
+                skipAutoRestartRef.current = false; // reset flag for next time
+                return;
+            }
+
+            if (!isManuallyStoppedRef.current && status !== 'Processing...') {
+                console.log('Auto-restarting recognition');
+                setTimeout(() => {
+                    if (!isManuallyStoppedRef.current) {
+                        startListening();
+                    }
+                }, 300);
+            }
+        };
+
+
+        recognition.onerror = (e) => {
+            // Ignore aborted errors (they're expected when stopping)
+            if (e.error === 'aborted') {
+                console.log('Recognition aborted (expected)');
+                return;
+            }
+
+            console.error('Speech recognition error:', e.error);
+            setIsListening(false);
+
+            // Only restart on non-aborted errors
+            if (e.error !== 'aborted' && !isManuallyStoppedRef.current) {
+                setStatus('Recognition error, restarting...');
                 setTimeout(() => startListening(), 1000);
             }
         };
+
         recognition.onresult = (event) => {
-            const transcript = Array.from(event.results)
-                .map(result => result[0].transcript)
-                .join(' ');
-            if (transcript.trim()) {
-                handleUserSpeech(transcript);
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    finalTranscript += transcript;
+                } else {
+                    interimTranscript += transcript;
+                }
+            }
+
+            // Interrupt bot if user speaks while bot is speaking
+            if (isSpeaking) {
+                const userSpeech = interimTranscript.trim() || finalTranscript.trim();
+                if (userSpeech.length > 1) {
+                    console.log('🛑 INTERRUPTION DETECTED! User said:', userSpeech);
+
+                    // Cancel bot speech immediately
+                    window.speechSynthesis.cancel();
+                    console.log("speech cnaceled");
+
+                    setIsSpeaking(false);
+                    setStatus('Interrupted! Continue speaking...');
+
+                    // Make sure recognition is listening NOW
+                    isManuallyStoppedRef.current = false; // allow startListening
+                    if (!isListening) {
+                        startListening();
+                    }
+
+                    return; // Don't process further here
+                }
+            }
+
+
+            // Process final transcript only when bot is NOT speaking
+            if (finalTranscript.trim() && !isSpeaking) {
+                console.log('Processing user input:', finalTranscript.trim());
+                handleUserSpeech(finalTranscript.trim());
             }
         };
+
         recognitionRef.current = recognition;
         recognition.start();
     };
@@ -47,22 +139,35 @@ const VoiceInterface = () => {
     // Stop listening
     const stopListening = () => {
         if (recognitionRef.current) {
-            recognitionRef.current.onend = null;
+            isManuallyStoppedRef.current = true;
+            recognitionRef.current.onend = null; // Prevent auto-restart
             recognitionRef.current.stop();
+            recognitionRef.current = null;
             setIsListening(false);
+            setStatus('Stopped listening');
         }
     };
 
-    // Handle user speech: stop bot, send to backend, play response
-    const handleUserSpeech = async (text) => {
-        console.log('User said:', text);
-
-        // If bot is speaking, interrupt
+    // Stop speaking function
+    const stopSpeaking = () => {
         if (window.speechSynthesis.speaking) {
             window.speechSynthesis.cancel();
             setIsSpeaking(false);
-        }
+                        setStatus('Click to start');
 
+            console.log('Speech synthesis stopped');
+        }
+    };
+
+    // Handle user speech with improved interruption
+    const handleUserSpeech = async (text) => {
+        console.log('Processing user speech:', text);
+        setStatus('Processing...');
+
+        // Stop any ongoing speech immediately
+        stopSpeaking();
+
+        // Stop listening during processing
         stopListening();
 
         // Abort any previous request
@@ -71,7 +176,6 @@ const VoiceInterface = () => {
         }
         abortControllerRef.current = new AbortController();
 
-        // Send to backend
         try {
             const response = await fetch('http://localhost:5000/api/gemini', {
                 method: 'POST',
@@ -87,10 +191,8 @@ const VoiceInterface = () => {
             const data = await response.json();
             console.log('Backend response:', data);
 
-            // Updated response handling - the backend now returns the text directly in data.response
             if (data && data.response) {
-                const botText = data.response;
-                speakBot(botText);
+                speakBot(data.response);
             } else {
                 console.error('No response text found in:', data);
                 speakBot("Sorry, I didn't receive a proper response.");
@@ -99,81 +201,137 @@ const VoiceInterface = () => {
             if (err.name !== 'AbortError') {
                 console.error('Error calling backend:', err);
                 speakBot("Sorry, there was an error processing your request.");
+            } else {
+                // Request was aborted, restart listening
+                setTimeout(() => startListening(), 500);
             }
         }
     };
 
-    // Speak bot response and return to listening
+    // FIXED: Enhanced speech synthesis with SINGLE onstart handler
     const speakBot = (text) => {
         if (!('speechSynthesis' in window)) {
             console.error('Speech synthesis not supported');
-            startListening(); // Still restart listening even if TTS fails
+            setTimeout(() => startListening(), 500);
             return;
+        }
+
+        // Clear any existing speech
+        if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
         }
 
         const utterance = new window.SpeechSynthesisUtterance(text);
 
-        // Optional: Set voice properties for better experience
+        // Voice settings for better experience
         utterance.rate = 0.9;
         utterance.pitch = 1;
         utterance.volume = 1;
 
+        // Try to get a better voice if available
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(voice =>
+            voice.lang.includes('en') && voice.name.includes('Google')
+        ) || voices.find(voice => voice.lang.includes('en'));
+
+        if (preferredVoice) {
+            utterance.voice = preferredVoice;
+        }
+
+        // FIXED: SINGLE onstart handler - no duplicates!
         utterance.onstart = () => {
-            console.log('Bot started speaking:', text);
+            console.log('Bot started speaking:', text.substring(0, 50) + '...');
             setIsSpeaking(true);
+            setStatus('Speaking... (interrupt anytime)');
+
+            // Start listening IMMEDIATELY for interruptions
+            console.log('Starting IMMEDIATE listening for interruptions');
+            isManuallyStoppedRef.current = false; // Allow listening to start
+            startListening();
         };
 
         utterance.onend = () => {
-            console.log('Bot finished speaking');
+            console.log('Bot finished speaking normally');
             setIsSpeaking(false);
-            startListening(); // Return to listening after speaking
+            setStatus('Listening...');
+
+            skipAutoRestartRef.current = true; // tell recognition.onend to skip restarting once
+
+            if (!isListening) {
+                setTimeout(() => startListening(), 200);
+            }
         };
+
 
         utterance.onerror = (error) => {
             console.error('Speech synthesis error:', error);
             setIsSpeaking(false);
-            startListening();
+
+            setTimeout(() => startListening(), 500);
         };
 
         window.speechSynthesis.speak(utterance);
     };
 
-    // Initial mic click: start listening
+    // Mic button click handler
     const handleMicClick = () => {
-        if (!isListening) {
-            startListening();
-        } else {
+        if (isSpeaking) {
+            // If speaking, stop and start listening
+            stopSpeaking();
             stopListening();
+            setStatus('Click to start');
+
+
+        } else if (isListening) {
+            // If listening, stop
+            stopListening();
+            setStatus('Click to start');
+        } else {
+            // If idle, start listening
+            isManuallyStoppedRef.current = false; // Allow listening to start
+            startListening();
         }
     };
 
+    // Get button class based on state
+    const getButtonClass = () => {
+        if (isSpeaking) return 'mic-button speaking';
+        if (isListening) return 'mic-button listening';
+        return 'mic-button idle';
+    };
+
     return (
-        <div className="center-container">
-            <div className="rev-logo">REVOLT</div>
-            <div className="toggle-switch">
-                <label className="switch">
-                    <input type="checkbox" disabled />
-                    <span className="slider round"></span>
+        <div className="voice-interface-container">
+            <div className="revolt-logo">REVOLT</div>
+
+            <div className="toggle-container">
+                <span className="toggle-label">Toggle</span>
+                <label className="toggle-switch">
+                    <input type="checkbox" disabled className="toggle-input" />
+                    <span className="toggle-slider">
+                        <span className="toggle-slider-inner"></span>
+                    </span>
                 </label>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <div className="bot-logo">🤖</div>
+
+            <div className="main-content">
+                <div className="bot-emoji">🤖</div>
+
                 <div className="talk-title">Talk to Rev</div>
-                <button
-                    onClick={handleMicClick}
-                    className="mic-btn"
-                    style={{
-                        background: isListening ? '#43a047' : (isSpeaking ? '#ff9800' : '#1976d2'),
-                        transition: 'background-color 0.3s ease'
-                    }}
-                >
-                    <svg width="36" height="36" fill="#fff" viewBox="0 0 24 24">
+
+                <button onClick={handleMicClick} className={getButtonClass()}>
+                    <svg className="mic-icon" viewBox="0 0 24 24">
                         <path d="M12 15a3 3 0 0 0 3-3V7a3 3 0 0 0-6 0v5a3 3 0 0 0 3 3zm5-3a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V21a1 1 0 1 0 2 0v-2.08A7 7 0 0 0 17 12z" />
                     </svg>
                 </button>
-                <div style={{ marginTop: 16, color: '#888', fontSize: 16 }}>
-                    {isListening ? 'Listening...' : (isSpeaking ? 'Speaking...' : 'Click to start')}
-                </div>
+
+                <div className="status-text">{status}</div>
+
+                {(isListening || isSpeaking) && (
+                    <div className="hint-text">
+                        {isSpeaking ? '🎤 Speak anytime to interrupt' : 'Say something...'}
+                    </div>
+                )}
             </div>
         </div>
     );
