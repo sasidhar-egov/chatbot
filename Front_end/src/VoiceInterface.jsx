@@ -194,7 +194,6 @@ const VoiceInterface = () => {
             }
 
             const data = await response.json();
-            console.log('Backend response:', data);
 
             if (data && data.response) {
                 speakBot(data.response);
@@ -268,8 +267,7 @@ const VoiceInterface = () => {
         };
 
 
-        utterance.onerror = (error) => {
-            console.error('Speech synthesis error:', error);
+        utterance.onerror = () => {
             setIsSpeaking(false);
 
             setTimeout(() => startListening(), 500);

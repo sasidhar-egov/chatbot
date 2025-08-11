@@ -190,7 +190,7 @@
 }
 
 .voice-interface-container.dark .main-content {
-  background-color: #1e1e1e;
+  background-color: #323131;
   box-shadow: 0 4px 20px rgba(255, 255, 255, 0.1);
 }
 
@@ -207,7 +207,7 @@
 }
 
 .voice-interface-container.dark .mic-button.idle {
-  background-color: #90caf9;
+  background-color: #4e91c7;
 }
 
 .voice-interface-container.dark .mic-button.listening {
