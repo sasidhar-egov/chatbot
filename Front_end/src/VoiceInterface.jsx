@@ -17,8 +17,8 @@ const VoiceInterface = () => {
     };
 
     // Cleanup on unmount
-         useEffect(() => {
-            //I deployed the backend separately on Render. To wake up the server from sleep, I call this health dummy API endpoint.        
+     useEffect(() => {
+        //I deployed the backend separately on Render. To wake up the server from sleep, I call this health dummy API endpoint.        
         fetch('https://ch-backend-nuvq.onrender.com/health')
         .then(res => res.json())
         .then(data => console.log('Wake-up ping:', data))
@@ -32,7 +32,6 @@ const VoiceInterface = () => {
             }
         };
     }, []);
-
 
     // Start continuous listening using Web Speech API
     const startListening = () => {
@@ -95,7 +94,7 @@ const VoiceInterface = () => {
             // Only restart on non-aborted errors
             if (e.error !== 'aborted' && !isManuallyStoppedRef.current) {
                 setStatus('Recognition error, restarting...');
-                setTimeout(() => startListening(), 500);
+                setTimeout(() => startListening(), 1000);
             }
         };
 
