@@ -6,7 +6,7 @@ const axios = require('axios');
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(express.json());
 
 // POST /api/gemini - Handles text input and gets response from Gemini API
@@ -61,7 +61,7 @@ User: ${text}`
   } catch (error) {
     console.error('Gemini API error:', error.response?.data || error.message);
     res.status(500).json({ 
-      error: 'Error communicating with Gemini API', 
+      error: `Error communicating with Gemini API: ${error.message || 'Unknown error'}`,
       details: error.response?.data || error.message 
     });
   }
