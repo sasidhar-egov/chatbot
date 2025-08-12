@@ -1,4 +1,3 @@
-
 # Revolt Motors Voice Assistant
 
 This repository contains the source code for a full-stack voice assistant application for Revolt Motors. The backend serves an API integrated with the Gemini generative language model, and the frontend is a React app providing a voice interface with speech recognition and speech synthesis.
@@ -134,5 +133,9 @@ This repository contains the source code for a full-stack voice assistant applic
 * Frontend fetch URL to backend should be updated to deployed backend URL in production.
 * Use nodemon (`npm run dev`) only for local backend development.
 
+---
 
+## Deployed Link
+
+Link : https://ch-fron-end.onrender.com
 
