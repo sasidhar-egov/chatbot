@@ -89,7 +89,7 @@ const VoiceInterface = () => {
             // Only restart on non-aborted errors
             if (e.error !== 'aborted' && !isManuallyStoppedRef.current) {
                 setStatus('Recognition error, restarting...');
-                setTimeout(() => startListening(), 1000);
+                setTimeout(() => startListening(), 500);
             }
         };
 
